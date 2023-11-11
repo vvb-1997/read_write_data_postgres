@@ -4,6 +4,7 @@ Reads the file as a dataframe and inserts each record to the Postgres table.
 """
 import psycopg2
 import os
+import sys
 import traceback
 import logging
 import pandas as pd
@@ -58,7 +59,7 @@ def download_file_from_url(url: str, dest_folder: str):
         traceback.print_exc()
         raise Exception(e)
     
-def create_postgres_table(table_name):
+def create_postgres_table(table_name, cur):
     """
     Create the Postgres table with a desired schema
     """
@@ -71,7 +72,7 @@ def create_postgres_table(table_name):
     except:
         logging.warning(' Check if the table churn_modelling exists')
 
-def write_to_postgres(file_path):
+def write_to_postgres(file_path, cur):
     """
     Create the dataframe and write to Postgres table if it doesn't already exist
     """
@@ -89,13 +90,18 @@ def write_to_postgres(file_path):
             cur.execute("""INSERT INTO churn_modelling (RowNumber, CustomerId, Surname, CreditScore, Geography, Gender, Age, 
             Tenure, Balance, NumOfProducts, HasCrCard, IsActiveMember, EstimatedSalary, Exited) VALUES (%s, %s, %s,%s, %s, %s,%s, %s, %s,%s, %s, %s,%s, %s)""", 
             (int(row[0]), int(row[1]), str(row[2]), int(row[3]), str(row[4]), str(row[5]), int(row[6]), int(row[7]), float(row[8]), int(row[9]), int(row[10]), int(row[11]), float(row[12]), int(row[13])))
+        # else:
+        #     query = f"""SELECT * FROM churn_modelling WHERE RowNumber = {row['RowNumber']}"""
+        #     cur.execute(query)
+        #     logging.info(f"Existing record for {row['RowNumber']} --> {cur.fetchone()}")
 
     logging.info(f' {inserted_row_count} rows from csv file inserted into churn_modelling table successfully')
 
 def write_csv_to_postgres_main():
+    conn, cur = create_db_connection()
     download_file_from_url(url, dest_folder)
-    create_postgres_table()
-    write_to_postgres()
+    create_postgres_table(table_name, cur)
+    write_to_postgres(destination_path, cur)
     conn.commit()
     cur.close()
     conn.close()
@@ -103,8 +109,8 @@ def write_csv_to_postgres_main():
 if __name__ == '__main__':
     conn, cur = create_db_connection()
     download_file_from_url(url, dest_folder)
-    create_postgres_table(table_name)
-    write_to_postgres(destination_path)
+    create_postgres_table(table_name, cur)
+    write_to_postgres(destination_path, cur)
     conn.commit()
     cur.close()
     conn.close()

@@ -35,7 +35,7 @@ def create_db_connection():
     
     return conn, cur
 
-def create_new_tables_in_postgres():
+def create_new_tables_in_postgres(cur):
     try:
         cur.execute("""CREATE TABLE IF NOT EXISTS churn_modelling_creditscore (geography VARCHAR(50), gender VARCHAR(20), avg_credit_score FLOAT, total_exited INTEGER)""")
         cur.execute("""CREATE TABLE IF NOT EXISTS churn_modelling_exited_age_correlation (geography VARCHAR(50), gender VARCHAR(20), exited INTEGER, avg_age FLOAT, avg_salary FLOAT,number_of_exited_or_not INTEGER)""")
@@ -45,7 +45,7 @@ def create_new_tables_in_postgres():
         traceback.print_exc()
         logging.error(f'Tables cannot be created due to: {e}')
 
-def insert_creditscore_table(df_creditscore):
+def insert_creditscore_table(df_creditscore, cur):
     query = "INSERT INTO churn_modelling_creditscore (geography, gender, avg_credit_score, total_exited) VALUES (%s,%s,%s,%s)"
     row_count = 0
     for _, row in df_creditscore.iterrows():
@@ -55,7 +55,7 @@ def insert_creditscore_table(df_creditscore):
     
     logging.info(f"{row_count} rows inserted into table churn_modelling_creditscore")
 
-def insert_exited_age_correlation_table(df_exited_age_correlation):
+def insert_exited_age_correlation_table(df_exited_age_correlation, cur):
     query = """INSERT INTO churn_modelling_exited_age_correlation (Geography, Gender, exited, avg_age, avg_salary, number_of_exited_or_not) VALUES (%s,%s,%s,%s,%s,%s)"""
     row_count = 0
     for _, row in df_exited_age_correlation.iterrows():
@@ -65,7 +65,7 @@ def insert_exited_age_correlation_table(df_exited_age_correlation):
     
     logging.info(f"{row_count} rows inserted into table churn_modelling_exited_age_correlation")
 
-def insert_exited_salary_correlation_table(df_exited_salary_correlation):
+def insert_exited_salary_correlation_table(df_exited_salary_correlation, cur):
     query = """INSERT INTO churn_modelling_exited_salary_correlation (exited, is_greater, correlation) VALUES (%s,%s,%s)"""
     row_count = 0
     for _, row in df_exited_salary_correlation.iterrows():
@@ -76,15 +76,16 @@ def insert_exited_salary_correlation_table(df_exited_salary_correlation):
     logging.info(f"{row_count} rows inserted into table churn_modelling_exited_salary_correlation")
 
 def write_df_to_postgres_main():
-    main_df = create_base_df(cur)
+    conn, cur = create_db_connection()
+    main_df = create_base_df(cur, table_name)
     df_creditscore = create_creditscore_df(main_df)
     df_exited_age_correlation = create_exited_age_correlation(main_df)
     df_exited_salary_correlation = create_exited_salary_correlation(main_df)
 
-    create_new_tables_in_postgres()
-    insert_creditscore_table(df_creditscore)
-    insert_exited_age_correlation_table(df_exited_age_correlation)
-    insert_exited_salary_correlation_table(df_exited_salary_correlation)
+    create_new_tables_in_postgres(cur)
+    insert_creditscore_table(df_creditscore, cur)
+    insert_exited_age_correlation_table(df_exited_age_correlation, cur)
+    insert_exited_salary_correlation_table(df_exited_salary_correlation, cur)
 
     conn.commit()
     cur.close()
@@ -97,10 +98,10 @@ if __name__ == '__main__':
     df_exited_age_correlation = create_exited_age_correlation(main_df)
     df_exited_salary_correlation = create_exited_salary_correlation(main_df)
 
-    create_new_tables_in_postgres()
-    insert_creditscore_table(df_creditscore)
-    insert_exited_age_correlation_table(df_exited_age_correlation)
-    insert_exited_salary_correlation_table(df_exited_salary_correlation)
+    create_new_tables_in_postgres(cur)
+    insert_creditscore_table(df_creditscore, cur)
+    insert_exited_age_correlation_table(df_exited_age_correlation, cur)
+    insert_exited_salary_correlation_table(df_exited_salary_correlation, cur)
 
     conn.commit()
     cur.close()
